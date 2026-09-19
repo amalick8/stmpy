@@ -98,15 +98,13 @@ def load(filePath, biasOffset=True, niceUnits=False):
         2023-05-18  - RL : Loads sxm scan files even if missing header.
 
     '''
-    try:
-        filename, extension = os.path.splitext(filePath)
-        extension = extension.replace(".","")
-    except IndexError:
+    _, extension = os.path.splitext(filePath)
+    extension = extension.lstrip('.')
+    if not extension:
         raise IOError('Please include file extension in path.')
-    loadFn = 'load_' + extension
 
     if extension in ['3ds', 'dat']:
-        dataObject = eval(loadFn)(filePath)
+        dataObject = _LOADERS[extension](filePath)
         if biasOffset:
             dataObject = _correct_bias_offset(dataObject, extension)
         if niceUnits:
@@ -115,7 +113,7 @@ def load(filePath, biasOffset=True, niceUnits=False):
 
     elif extension in ['spy', 'sxm', 'nvi', 'nvl', 'nsp', 'asc', 'sm4', 
                        '2FL', '1FL', 'TFR', '1FR', 'FFL']:
-        return eval(loadFn)(filePath)
+        return _LOADERS[extension](filePath)
 
   #  elif filePath.endswith('.mat'):
   #      raw_mat = matio.loadmat(filePath)
@@ -156,13 +154,12 @@ def save(data, filePath, objects=[]):
         2018-03-08  - HP : Added support for multi-line strings.
         2018-10-10  - HP : Python 3 compatibility
     '''
-    try:
-        extension = filePath.split('.')[1]
-    except IndexError:
+    _, extension = os.path.splitext(filePath)
+    extension = extension.lstrip('.')
+    if not extension:
         raise IOError('Please include file extension in path.')
-    saveFn = 'save_' + extension
     if extension in ['spy']:
-        eval(saveFn)(data, filePath, objects)
+        _SAVERS[extension](data, filePath, objects)
     else:
         raise IOError('ERR - File type {:} not supported.'.format(extension))
 
@@ -429,7 +426,7 @@ def load_spy(filePath):
             if line.strip().decode('utf-8') == ':STR_END:':
                 break
             st += line.decode('utf-8')
-        return st
+        return st[:-1] if st.endswith('\n') else st
 
     def read_byt(fileObj):
         return fileObj.readline()
@@ -641,10 +638,10 @@ def load_sxm(filePath):
                 except ValueError:
                     pass
             elif tagname in ('SCAN_PIXELS', 'SCAN_TIME', 'SCAN_RANGE', 'SCAN_OFFSET'):
-                self.header[tagname.lower()] = [ float(i) for i in re.split('\s+', line) ]
+                    self.header[tagname.lower()] = [float(i) for i in re.split(r'\s+', line)]
             elif 'DATA_INFO' == tagname:
                 if 1 == self.header['version']:
-                    keys = re.split('\s\s+',line)
+                    keys = re.split(r'\s\s+', line)
                 else:
                     keys = line.split('\t')
                 self.header['data_info'] = []
@@ -859,7 +856,7 @@ def load_asc(filePath):
     channels = {}
     while True:
         line = fileObj.readline().rstrip()
-        if line is '':
+        if line == '':
             break
         splitLine = line.split(':')
         header[splitLine[0]] = splitLine[1]
@@ -873,7 +870,7 @@ def load_asc(filePath):
             channels[chn] += [val]
     for chn in channelNames:
         channels[chn] = np.array(channels[chn])
-    if len(channelNames) is 2:
+    if len(channelNames) == 2:
         self.x = channels[channelNames[0]]
         self.y = channels[channelNames[1]]
     self.header = header
@@ -981,7 +978,7 @@ def load_sm4(filePath):
 def _read_Cornell_header(fid):
     def hread(r_offset, start, dtype, length):
         fid.seek(r_offset + start - 1)
-        if dtype is 'str':
+        if dtype == 'str':
             out = fid.read(length).decode('latin-1').rstrip('\x00')
         else: 
             out = np.fromfile(fid, dtype=dtype, count=length)[0]
@@ -1087,6 +1084,28 @@ def load_1FR(filePath):
     self.header, I = _load_FR(filePath)
     self.I = -I # Inverting amplifier?
     return self
+
+
+_LOADERS = {
+    'spy': load_spy,
+    '3ds': load_3ds,
+    'sxm': load_sxm,
+    'dat': load_dat,
+    'nsp': load_nsp,
+    'nvi': load_nvi,
+    'nvl': load_nvl,
+    'asc': load_asc,
+    'sm4': load_sm4,
+    '2FL': load_2FL,
+    '1FL': load_1FL,
+    'FFL': load_FFL,
+    'TFR': load_TFR,
+    '1FR': load_1FR,
+}
+
+_SAVERS = {
+    'spy': save_spy,
+}
 
 
 
