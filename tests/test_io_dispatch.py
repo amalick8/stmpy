@@ -1,6 +1,7 @@
 """Tests for public file-type dispatch in :mod:`stmpy.io`."""
 
 import unittest
+from unittest import mock
 
 from stmpy import io
 
@@ -26,18 +27,23 @@ class FileDispatchTests(unittest.TestCase):
 
         io._LOADERS['dat'] = load_dat
 
-        result = io.load('measurement.run.dat', biasOffset=False)
+        with mock.patch.object(io.os.path, 'isfile', return_value=True):
+            result = io.load('measurement.run.dat', biasOffset=False)
 
         self.assertIs(result, sentinel)
         self.assertEqual(calls, ['measurement.run.dat'])
 
     def test_load_rejects_missing_extension(self):
-        with self.assertRaisesRegex(IOError, 'include file extension'):
+        with self.assertRaisesRegex(OSError, 'filename extension'):
             io.load('measurement')
 
     def test_load_rejects_unsupported_extension(self):
-        with self.assertRaisesRegex(IOError, 'not supported'):
+        with self.assertRaisesRegex(OSError, "cannot load '.csv'"):
             io.load('measurement.csv')
+
+    def test_load_reports_missing_file(self):
+        with self.assertRaisesRegex(FileNotFoundError, 'missing.dat'):
+            io.load('missing.dat', biasOffset=False)
 
     def test_save_uses_registered_saver(self):
         calls = []
@@ -54,8 +60,12 @@ class FileDispatchTests(unittest.TestCase):
         self.assertEqual(calls, [(payload, 'result.spy', objects)])
 
     def test_save_rejects_missing_extension(self):
-        with self.assertRaisesRegex(IOError, 'include file extension'):
+        with self.assertRaisesRegex(OSError, 'filename extension'):
             io.save({}, 'result')
+
+    def test_save_rejects_unsupported_extension(self):
+        with self.assertRaisesRegex(OSError, "cannot save '.csv'"):
+            io.save({}, 'result.csv')
 
 
 if __name__ == '__main__':

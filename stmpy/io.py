@@ -20,6 +20,7 @@ TO DO:
 
 __version__ = 1.1
 
+import ast
 import stmpy
 from stmpy import matio
 import numpy as np
@@ -34,6 +35,29 @@ from scipy.optimize import minimize
 
 PY2 = sys.version_info.major == 2
 PY3 = sys.version_info.major == 3
+
+
+def _resolve_handler(file_path, handlers, operation):
+    """Return a normalized path, extension, and registered file handler."""
+    path = os.fspath(file_path)
+    extension = os.path.splitext(path)[1].lstrip('.')
+
+    if not extension:
+        raise OSError(
+            'STMPY needs a filename extension to {} this file.'.format(operation)
+        )
+
+    try:
+        handler = handlers[extension]
+    except KeyError:
+        supported = ', '.join('.' + item for item in sorted(handlers))
+        raise OSError(
+            "STMPY cannot {} '.{}' files. Supported types: {}.".format(
+                operation, extension, supported
+            )
+        )
+
+    return path, extension, handler
 
 
 def load(filePath, biasOffset=True, niceUnits=False):
@@ -98,42 +122,23 @@ def load(filePath, biasOffset=True, niceUnits=False):
         2023-05-18  - RL : Loads sxm scan files even if missing header.
 
     '''
-    _, extension = os.path.splitext(filePath)
-    extension = extension.lstrip('.')
-    if not extension:
-        raise IOError('Please include file extension in path.')
+    filePath, extension, loader = _resolve_handler(filePath, _LOADERS, 'load')
+    if not os.path.isfile(filePath):
+        raise FileNotFoundError(
+            "STMPY could not find the data file: '{}'".format(filePath)
+        )
 
     if extension in ['3ds', 'dat']:
-        dataObject = _LOADERS[extension](filePath)
+        dataObject = loader(filePath)
         if biasOffset:
             dataObject = _correct_bias_offset(dataObject, extension)
         if niceUnits:
             dataObject = _nice_units(dataObject, extension)
         return dataObject
 
-    elif extension in ['spy', 'sxm', 'nvi', 'nvl', 'nsp', 'asc', 'sm4', 
-                       '2FL', '1FL', 'TFR', '1FR', 'FFL']:
-        return _LOADERS[extension](filePath)
+    return loader(filePath)
 
-  #  elif filePath.endswith('.mat'):
-  #      raw_mat = matio.loadmat(filePath)
-  #      mappy_dict = {}
-  #      for key in raw_mat:
-  #          try:
-  #              mappy_dict[key] = matio.Mappy()
-  #              mappy_dict[key].mat2mappy(raw_mat[key])
-  #              print('Created channel: {:}'.format(key))
-  #          except:
-  #              del mappy_dict[key]
-  #              print('Could not convert: {:}'.format(key))
-  #      if len(mappy_dict) == 1: return mappy_dict[mappy_dict.keys()[0]]
-  #      else: return mappy_dict
-
-    else:
-        raise IOError('ERR - File type {:} not supported.'.format(extension))
-
-
-def save(data, filePath, objects=[]):
+def save(data, filePath, objects=None):
     '''
     Save python data to file. Please include the file extension in the path.
 
@@ -154,14 +159,8 @@ def save(data, filePath, objects=[]):
         2018-03-08  - HP : Added support for multi-line strings.
         2018-10-10  - HP : Python 3 compatibility
     '''
-    _, extension = os.path.splitext(filePath)
-    extension = extension.lstrip('.')
-    if not extension:
-        raise IOError('Please include file extension in path.')
-    if extension in ['spy']:
-        _SAVERS[extension](data, filePath, objects)
-    else:
-        raise IOError('ERR - File type {:} not supported.'.format(extension))
+    filePath, _, saver = _resolve_handler(filePath, _SAVERS, 'save')
+    saver(data, filePath, objects)
 
 
 
@@ -267,8 +266,10 @@ def _make_attr(self, attr, names, data):
 
 ####    ____SAVE FUNCTIONS____    ####
 
-def save_spy(data, filePath, objects=[]):
+def save_spy(data, filePath, objects=None):
     '''Save python data to file'''
+
+    objects = [] if objects is None else list(objects)
 
     def stew(fileObj, val):
         'Quickly write binary strings with utf-8 encoding.'
@@ -381,7 +382,7 @@ def load_spy(filePath):
 
     def read_oar(fileObj):
         line = fileObj.readline().strip().decode('utf-8')
-        shape = eval(line)
+        shape = ast.literal_eval(line)
         oar = np.empty(shape=shape, dtype=object).flatten()
         for ix, __ in enumerate(oar):
             line = fileObj.readline().strip().decode('utf-8')

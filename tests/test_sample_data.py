@@ -21,15 +21,17 @@ class SampleDataTests(unittest.TestCase):
             'label': 'test',
             'notes': 'first line\nsecond line\n',
         }
+        object_types = []
 
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'roundtrip.spy'
-            stmpy.save(original, str(path))
-            restored = stmpy.load(str(path))
+            stmpy.save(original, path, objects=object_types)
+            restored = stmpy.load(path)
 
         np.testing.assert_array_equal(restored['energy'], original['energy'])
         self.assertEqual(restored['label'], original['label'])
         self.assertEqual(restored['notes'], original['notes'])
+        self.assertEqual(object_types, [])
 
     def test_load_sxm_topography(self):
         data = stmpy.load(str(SAMPLE_DATA / 'topo.sxm'))

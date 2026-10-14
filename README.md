@@ -10,14 +10,23 @@ Get started with the stmpy 101 tutorial in `stmpy/doc/`
 
 ### Installation
 
-For developers
+STMPY requires Python 3.9 or newer.
+
+For developers:
 
 1. **Clone** or **download** `stmpy` to your local drive.
-2. Navigate to within local copy of stmpy.
+2. Navigate to the local copy of STMPY.
+3. Install it in editable mode:
+
 ```sh
-$ python -m pip install --editable .
+python -m pip install -e .
 ```
-- *[deprecated](https://packaging.python.org/en/latest/discussions/setup-py-deprecated/):* ~~`python setup.py develop`~~
+
+Run the automated tests from the repository root:
+
+```sh
+python -m unittest discover -s tests -v
+```
 
 For users (in progress)
 

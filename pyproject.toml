@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hoffmanstmpy"
+version = "1.0.1"
+description = "Scanning tunneling microscopy data analysis suite"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE.txt" }
+authors = [
+  { name = "Harris Pirie", email = "hoffmanlabcoding@gmail.com" },
+]
+keywords = ["STM", "Python", "data analysis"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Build Tools",
+]
+dependencies = [
+  "numpy",
+  "scipy",
+  "matplotlib",
+  "opencv-python",
+  "scikit-image",
+]
+
+[project.urls]
+Homepage = "https://github.com/hoffmanlabcoding/stmpy"
+Repository = "https://github.com/hoffmanlabcoding/stmpy.git"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+include = ["stmpy*"]
+exclude = [
+  "stmpy.doc*",
+  "stmpy.mapviewer.dev py files*",
+]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.mat"]
