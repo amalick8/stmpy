@@ -1,11 +1,18 @@
 import importlib
+from importlib.metadata import PackageNotFoundError, version
 import warnings
 warnings.filterwarnings("ignore", category=SyntaxWarning)
 #For Python 3.8+, to avoid SyntaxWarning: "is" with a literal. Did you mean "=="?
 
-__all__ = ['tools']
+__all__ = ['AnalysisRecord', 'load', 'save', 'tools']
+
+try:
+    __version__ = version('hoffmanstmpy')
+except PackageNotFoundError:
+    __version__ = '1.0.1'
 
 from stmpy.io import load, save
+from stmpy.provenance import AnalysisRecord
 
 
 def __getattr__(name):

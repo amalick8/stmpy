@@ -28,6 +28,27 @@ Run the automated tests from the repository root:
 python -m unittest discover -s tests -v
 ```
 
+### Reproducible analysis records
+
+STMPY can optionally save a small JSON record beside a processed data file or
+figure. The record includes the STMPY version, timestamps, parameters, input
+and output filenames, SHA-256 file fingerprints, and loaded array dimensions.
+Existing loading and saving code is unchanged unless a record is supplied.
+
+```python
+import stmpy
+
+record = stmpy.AnalysisRecord(
+    "topography correction",
+    parameters={"sample": "FeSe", "temperature_K": 4.2},
+)
+
+data = stmpy.load("measurement.sxm", record=record)
+# Run analysis and export a figure or processed file here.
+stmpy.save(data, "corrected.spy", record=record)
+record.save("corrected.analysis.json")
+```
+
 For users (in progress)
 
 ```sh

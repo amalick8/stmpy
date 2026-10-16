@@ -60,7 +60,7 @@ def _resolve_handler(file_path, handlers, operation):
     return path, extension, handler
 
 
-def load(filePath, biasOffset=True, niceUnits=False):
+def load(filePath, biasOffset=True, niceUnits=False, record=None):
     '''
     Loads data into python. Please include the file extension in the path.
 
@@ -90,6 +90,8 @@ def load(filePath, biasOffset=True, niceUnits=False):
                                  for where the current is zero.
         niceUnits   - Optional : Put lock-in channel units as nS (in future
                                  will switch Z to pm, etc.)
+        record      - Optional : AnalysisRecord that receives input file,
+                                 loader settings, and resulting array shapes.
     Returns:
         spyObject  - Custom object with attributes appropriate to the type of
                       data and containing experiment parameters in a header.
@@ -134,11 +136,26 @@ def load(filePath, biasOffset=True, niceUnits=False):
             dataObject = _correct_bias_offset(dataObject, extension)
         if niceUnits:
             dataObject = _nice_units(dataObject, extension)
+        if record is not None:
+            record.record_load(
+                filePath,
+                extension,
+                {'bias_offset': biasOffset, 'nice_units': niceUnits},
+                dataObject,
+            )
         return dataObject
 
-    return loader(filePath)
+    dataObject = loader(filePath)
+    if record is not None:
+        record.record_load(
+            filePath,
+            extension,
+            {'bias_offset': False, 'nice_units': False},
+            dataObject,
+        )
+    return dataObject
 
-def save(data, filePath, objects=None):
+def save(data, filePath, objects=None, record=None):
     '''
     Save python data to file. Please include the file extension in the path.
 
@@ -150,6 +167,7 @@ def save(data, filePath, objects=None):
         filePath    - Required : str. Path where the file will be saved.
         objects     - Optional : lst. Only objects with a __class__ in this
                                  list (and Spy objects) can be saved.
+        record      - Optional : AnalysisRecord that receives the output file.
 
     Returns:
         None
@@ -161,6 +179,13 @@ def save(data, filePath, objects=None):
     '''
     filePath, _, saver = _resolve_handler(filePath, _SAVERS, 'save')
     saver(data, filePath, objects)
+    if record is not None:
+        details = record.add_output(filePath)
+        record.add_step(
+            'save',
+            parameters={'file_type': os.path.splitext(filePath)[1].lstrip('.')},
+            result={'output_sha256': details['sha256']},
+        )
 
 
 
